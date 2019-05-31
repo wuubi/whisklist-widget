@@ -1,0 +1,17 @@
+<html>
+<head>
+  <title>{{title}}</title>
+</head>
+<body>
+  
+    {{#each wishlists}}
+        {{@index}}. {{this}}
+        
+    {{/each}}
+    {{#each products}}
+        {{@index}}. {{this}}
+        {{id}}
+    {{/each}}
+
+</body>
+</html>
