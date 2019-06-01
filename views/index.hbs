@@ -3,15 +3,22 @@
   <title>{{title}}</title>
 </head>
 <body>
-  
+  <h2>Whisklist</h2></br>
+    <h3>Wishlists</h3>
     {{#each wishlists}}
+        <p>
         {{@index}}. {{this}}
-        
+        <h4>{{name}}</h4>
+        </p>
     {{/each}}
+    <h3>Products</h3>
     {{#each products}}
-        {{@index}}. {{this}}
-        {{id}}
+        <p>{{this}}</p>
+        <h4>{{name}} - {{sku}}</h4>
+        <h5>Included in</h5>
+        <p>Wishlists: {{wishlists}}</p>
     {{/each}}
+    
 
 </body>
 </html>

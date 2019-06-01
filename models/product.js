@@ -5,13 +5,12 @@ const ObjectId = Schema.ObjectId;
 const idSchema = new Schema({id:Number});
 
 const productSchema = new Schema({
-  id: ObjectId,
+  _id: ObjectId,
   wishlists: [idSchema],
-  data: {
-    id: Number,
+  id: Number,
     name: String,
     sku: String
-  }
+  
 });
 
 module.exports = mongoose.model('Product', productSchema);

@@ -30,7 +30,7 @@ const bigCommerce = new BigCommerce({
   accessToken: process.env.TOKEN,
   secret: process.env.SECRET,
   storeHash: process.env.HASH,
-  callback: 'https://f26dcbab.ngrok.io/auth',
+  callback: 'https://f26dcbab.ngrok.io/auth', // this does nothing right now
   responseType: 'json',
   apiVersion: 'v3' // Default is v2
 });
@@ -58,21 +58,21 @@ console.log(prodArr + "LINE 56");
 app.get('/', function (req, res) {
   try {
     console.log(req + "requestVal");
-
-    fs.readFile('products.json', 'utf8', function readFileCallback(err, file){
-      if(err){
-          console.log(err);
-      }
-      else{
-        obj = JSON.parse(file);
-        wishlists = obj;
-        console.log(wishlists + "LINE 69");
-        res.render('index', {title: 'Wishlists', wishlists: wishlists})
-      }})
-      
-
-  
-  } catch (err){
+        Wishlist.find({}, (err, allWishlists) => {
+          if(err){
+            console.log(err);
+          } else{
+            Product.find({}, (err, allProducts) => {
+              if(err){
+                console.log(err);
+              } else{
+              res.render('index', {title: 'Wishlists', wishlists: allWishlists, products:allProducts})
+              }
+            });
+          }
+        });
+        
+     } catch (err){
     console.log(err);
   }
 })
@@ -93,6 +93,44 @@ router.get('/load', (req, res, next) => {
     }
   });
 
+function checkWishlists(){
+    fs.readFile('wishlistId.json', 'utf8', function readFileCallback(err, file){
+      if(err){
+        console.log(err);
+      }
+      else{
+        wishlistId = file;
+        Product.collection.findOneAndUpdate({'id': productId}, {$push : {wishlists: [Arr[id].id]}}, function(err, docs){
+          if (docs) {
+            console.log(JSON.stringify(docs) + "LINE 125");
+            
+              
+          }
+          console.log(err);
+        });
+      }
+    });
+    wishlistId = [];
+    wishlistId.push("id: " + Arr[id].id);
+    let wId = Arr[id].id;
+    console.log(JSON.stringify(Arr[id].items) + "LINE 114");
+    items = Arr[id].items;
+    itemString = items;
+    console.log(itemString + " LINE 116")
+    console.log(wishlistId + "wishlist id " + wId + "wId");
+    
+    for(product_id in itemString){
+      
+      if (itemString.hasOwnProperty(product_id)){
+        console.log(JSON.stringify(Arr[id]) + "LINE 110");
+        console.log(JSON.stringify(itemString[product_id]) + "LINE 123");
+        productId = JSON.stringify(itemString[product_id].product_id);
+        console.log(productId + "LINE 122");
+        
+      }
+    }
+}
+
 
 function getWishlists(){
   bigCommerce.get('/wishlists')
@@ -107,77 +145,90 @@ function getWishlists(){
     }
     for(id in Arr){
       if (Arr.hasOwnProperty(id)){
-          
-        wishlistId = [];
-        wishlistId.push("id: " + Arr[id].id);
-        let wId = Arr[id].id;
-        console.log(JSON.stringify(Arr[id].items) + "LINE 114");
-        items = Arr[id].items;
-        itemString = items;
-        console.log(itemString + " LINE 116")
-        console.log(wishlistId + "wishlist id " + wId + "wId");
-        
-        for(product_id in itemString){
-          
-          if (itemString.hasOwnProperty(product_id)){
-            console.log(JSON.stringify(Arr[id]) + "LINE 110");
-            console.log(JSON.stringify(itemString[product_id]) + "LINE 123");
-            productId = JSON.stringify(itemString[product_id].product_id);
-            console.log(productId + "LINE 122");
-            Product.collection.findOneAndUpdate({'id': productId}, {$push : {'wishlists': Arr[id].id}}, function(err, docs){
-              if (docs) {
-                console.log(JSON.stringify(docs) + "LINE 125");
-                
-                  
-              }
-              console.log(err);
-            });
-          }
-        }
-        
           bigCommerce.get('/wishlists/'+ Arr[id].id).then(data => {
           itemsArr = data.data;
           console.log(itemsArr.id + "LINE 148");
           Wishlist.collection.findOne({"id":itemsArr.id}, null, function(err, docs){
             if (docs === null){
-            Wishlist.collection.insert(data.data, function(err, res) {
+              
+            Wishlist.collection.insertOne(data.data, function(err, res) {
               if (err) throw err;
               console.log('Number of documents inserted: ' + res.insertedCount);
               
             });
-            console.log(err);
           }
-          });
           
+        }); // LINE 151 WISHLIST FIND
           for(product_id in itemsArr.items){
-            if(itemsArr.items.hasOwnProperty(product_id)){
-              
-              bigCommerce.get('/catalog/products/' + itemsArr.items[product_id].product_id)
-              .then(data => {
-                data = data.data;
-                prodArr = new Object();
-                prodArr = {
-                  table: []
-                };
-                prodArr = JSON.stringify(data);
-                console.log(JSON.stringify(data.id) + "LINE 180");
-                console.log(prodArr + "LINE 181");
-                Product.collection.findOne({"id":data.id}, null, function(err, docs){
-                  if (docs === null){
-                  Product.collection.insert(data, function(err, res) {
-                    if (err) throw err;
-                    console.log('Number of documents inserted: ' + res.insertedCount);
+              if(itemsArr.items.hasOwnProperty(product_id)){
+                wishlistId = itemsArr.id;
+                console.log(wishlistId + "WISHLIST ID LINE 165")
+                productId = itemsArr.items[product_id].product_id;
+                bigCommerce.get('/catalog/products/' + itemsArr.items[product_id].product_id)
+                .then(data => {
+                  data = data.data;
+                  prodArr = new Object();
+                  prodArr = JSON.stringify(data);
+                  console.log(JSON.stringify(data.id) + "LINE 180");
+                  console.log(prodArr + "LINE 181");
+                  Product.collection.findOne({"id":data.id}, null, function(err, docs){
+                    if (docs === null){
+                      
+                    Product.collection.insertOne(data, function(err, res) {
+                      Product.collection.findOne({'id': productId, 'wishlists': {'id':wishlistId}}, function(err, docs){
+                            if (docs) {
+                              console.log(JSON.stringify(docs) + "LINE 125");
+                              
+                                
+                            }
+                            else{
+                              Wishlist.collection.findOne({'id': wishlistId, 'items.product_id': productId}, function(err, res){
+                                if(err) throw err;
+                                else{
+                                Product.collection.findOneAndUpdate({'id': productId}, {$push: {'wishlists': {'id':wishlistId}}}, function(err,docs){
+                                  if (err) throw err;
+                                  else console.log(docs);
+                                });
+                                console.log(res);
+                              }
+                              });
+                            }
+                          });
+                      if (err) throw err;
+                      console.log('Number of documents inserted: ' + res.insertedCount);
+                    });
+                    
+                  }
+                    else {
+                            Product.collection.findOne({'id': productId, 'wishlists': {'id':wishlistId}}, function(err, docs){
+                              if (docs) {
+                                console.log(JSON.stringify(docs) + "LINE 125");
+                                
+                                  
+                              }
+                              else{
+                                Wishlist.collection.findOne({'id': wishlistId, 'items.product_id': productId}, function(err, res){
+                                  if(err) throw err;
+                                  else{
+                                  Product.collection.findOneAndUpdate({'id': productId}, {$push: {'wishlists': {'id':wishlistId}}}, function(err,docs){
+                                    if (err) throw err;
+                                    else console.log(docs);
+                                  });
+                                  console.log(res);
+                                }
+                                });
+                                
+                              }
+                            });
+                    }
                   });
                   
-                }
-                  
-                });
-                
-                }), (err) => {
-                  console.log(err);
-                };
+                  })
+              }
             }
-          }
+          
+          
+          
         })
       }
     }
