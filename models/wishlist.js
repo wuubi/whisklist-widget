@@ -8,7 +8,9 @@ const wishlistSchema = new Schema({
   id: ObjectId,
   products: [idSchema],
   data: {
-    id: Number,
+    id: {
+      type: Number
+    },
     customer_id: Number,
     name: String,
     is_public: Boolean,
