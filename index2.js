@@ -51,33 +51,7 @@ app.use(bodyParser.json());
 app.use(wishlistRoute);
 app.use(productRoute);
 
-/* kickOff().catch();
-async function kickOff(){
-  await new Promise((resolve) => {
-  getWishlists((err) => {
-    if(err){
-      console.log(err);
-    }
-    else{
-      console.log("wishlists got");
-      resolve();
-      }
-  },0);
-  });
-  await new Promise((resolve) => {
-    getProducts((err) => {
-      if(err){
-        reject(err);
-      }
-      else{
-        console.log("products got");
-        resolve();
-        }
-    },0);
-    });
-}
-*/
-// This stuff doesn't work right ^^ only getWishlists is run, doesn't seem to actually resolve, likely due to a Promise not being returned correctly?
+
 // ROUTES
 app.get('/', function (req, res) {
   try {
@@ -116,7 +90,7 @@ router.get('/load', (req, res, next) => {
     }
   });
 
-const getWishlists = new Promise (function (){
+const getWishlists = new Promise (async function (resolve, reject){
   bigCommerce.get('/wishlists')
   .then(data => {
     Arr = data.data;
@@ -128,7 +102,8 @@ const getWishlists = new Promise (function (){
         }
     }
     e();
-    async function e(){for(i=0; i < wArr.length; i++){
+    async function e(){
+      for(i=0; i < wArr.length; i++){
         await bigCommerce.get('/wishlists/'+ wArr[i]).then(data => {
             wishlistsArr = [];
             wishlistsArr = data.data;
@@ -140,18 +115,23 @@ const getWishlists = new Promise (function (){
               Wishlist.collection.insertOne(data.data, function(err, res) {
                 if (err) throw err;
                 console.log('Number of documents inserted: ' + res.insertedCount);
-                
+                resolve();
               });
               if (err) throw err;
+            }
+            else{
+              reject(err);
             }
           });
         });
     }}
 });
+}).catch(err => {
+  console.log("getWishlists rejected" + err);
 });
 
-const getProducts = new Promise (function (){
-    bigCommerce.get('/catalog/products').then(data =>{
+const getProducts = new Promise (async function (resolve, reject){
+  bigCommerce.get('/catalog/products').then(data =>{
         Arr = data.data;
         let pArr = [];
         for([key, value] of Object.entries(Arr)){
@@ -163,20 +143,75 @@ const getProducts = new Promise (function (){
         e();
         async function e(){
         for(i=0;i < pArr.length; i++){
-            await Wishlist.collection.find({'items.product_id':pArr[i]}, null, function(err, docs){
-                if(docs === null){
+          await bigCommerce.get('/catalog/products/' + pArr[i]).then(data =>
+            {
+              prodArr = [];
+              prodArr = data.data;
+              pId = prodArr.id;
+              console.log(pId);
+              Wishlist.collection.find({'items.product_id':pId}, null, function(err, docs){
+                if(docs == null){
                     console.log("no products found");
+                    return resolve();
                 }
                 if(docs){
-                    console.log(docs.id);
+                  wIdArr = [];
+                    docs.forEach(element => {
+                      
+                      for([key, value] of Object.entries(element)){
+                        if(key === "id"){
+                          wIdArr.push(value);
+                        }
+                      }
+                      Product.collection.findOne({'id':pId}, null, function(err, docs){
+                        if (err) throw err;
+                        if (docs != null){
+                          console.log(wIdArr);
+                          wIdArr.forEach(element =>{
+                              Product.collection.findOne({'id':pId, 'wishlists.id':wIdArr}, null, function(err, docs){
+                                if (err) throw err;
+                                if(docs == null){
+                                  Product.collection.findOneAndUpdate({'id':pId}, {$push: {'wishlists': {'id':wIdArr}}}, function(err, docs){
+                                    if (err) throw err;
+                                    else{
+                                      console.log(docs);
+                                    }
+                                  })
+                                }
+                                if(docs != null){
+                                  console.log("wishlist already saved to product");
+                                }
+                              });
+                              
+                          })
+                        }
+                        if(docs == null){
+                          Product.collection.insertOne(prodArr, null, function(err, docs){
+                            if (err) throw err;
+                            if (docs){
+                              console.log(docs);
+                            }
+                          })
+                        }
+                      })
+                      
+                    });
                 }
-                if(err) throw err;
+                else{
+                  return reject(err);
+                }
             })
+            })
+            
         }
       }
     })
     
+}).catch(err => {
+  console.log("getProducts rejected" + err);
 });
 
-
-getWishlists.then(()=>{getProducts.catch(err)});
+kickOff().catch();
+async function kickOff(){
+  await getWishlists.then(getProducts);
+}
