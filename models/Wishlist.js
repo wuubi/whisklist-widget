@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const Schema = mongoose.Schema;
 const ObjectId = Schema.ObjectId;
-const idSchema = new Schema({id:Number});
+const idSchema = new Schema({ id: Number });
 
 const wishlistSchema = new Schema({
   id: ObjectId,
@@ -18,8 +18,8 @@ const wishlistSchema = new Schema({
       id: Number,
       product_id: Number,
       variant_id: Number
+    }
   }
-}
 });
 
 module.exports = mongoose.model('Wishlist', wishlistSchema);

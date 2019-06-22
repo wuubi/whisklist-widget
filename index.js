@@ -1,28 +1,28 @@
 require('dotenv').config();
 
 const express = require('express'),
-      router = express.Router(),
-      BigCommerce = require('node-bigcommerce');
-      bodyParser = require('body-parser');
-      exphbs = require('express-handlebars');
-      mongoose = require('mongoose');
-      app = express(),
-      hbs = exphbs.create({ /* config */ });
-      fs = require('fs');
+  router = express.Router(),
+  BigCommerce = require('node-bigcommerce');
+bodyParser = require('body-parser');
+exphbs = require('express-handlebars');
+mongoose = require('mongoose');
+(app = express()),
+  (hbs = exphbs.create({
+    /* config */
+  }));
+fs = require('fs');
 
 const wishlistRoute = require('./routes/wishlist');
 const productRoute = require('./routes/product');
-const Wishlist = require('./models/wishlist.js');
-const Product = require('./models/product.js');
+const Wishlist = require('./models/Wishlist.js');
+const Product = require('./models/Product.js');
 
 const server = app.listen(process.env.PORT, () => {
-        console.log('Express listening at ', server.address().port);
-    })
+  console.log('Express listening at ', server.address().port);
+});
 
- // MongoDB setup
-mongoose.connect(process.env.MONGO, { useNewUrlParser: true }); // Your mongodb:// URI/database
-
-
+// MongoDB setup
+mongoose.connect(process.env.MONGO, { useNewUrlParser: true });
 
 const bigCommerce = new BigCommerce({
   logLevel: 'info',
@@ -30,154 +30,208 @@ const bigCommerce = new BigCommerce({
   accessToken: process.env.TOKEN,
   secret: process.env.SECRET,
   storeHash: process.env.HASH,
-  callback: 'https://f26dcbab.ngrok.io/auth', // this does nothing right now
   responseType: 'json',
   apiVersion: 'v3' // Default is v2
 });
 
 // View Setup
-app.engine('.hbs', exphbs({
-  extname: '.hbs',
-  helpers: {
-    toJSON : function(object) {
-      return JSON.stringify(object);
+app.engine(
+  '.hbs',
+  exphbs({
+    extname: '.hbs',
+    helpers: {
+      toJSON: function(object) {
+        return JSON.stringify(object);
+      }
     }
-  }
-}));
-mongoose.set('debug', true)
+  })
+);
+mongoose.set('debug', true);
 app.set('view engine', '.hbs');
 app.set('views', __dirname + '/views');
 app.use(bodyParser.json());
 app.use(wishlistRoute);
 app.use(productRoute);
 
-prodArr = [];
-prodArr = getWishlists();
-console.log(prodArr + "LINE 56");
 // ROUTES
-app.get('/', function (req, res) {
+app.get('/', function(req, res) {
   try {
-    console.log(req + "requestVal");
-        Wishlist.find({}, (err, allWishlists) => {
-          if(err){
+    console.log(req + 'requestVal');
+    Wishlist.find({}, (err, allWishlists) => {
+      if (err) {
+        console.log(err);
+      } else {
+        Product.find({}, (err, allProducts) => {
+          if (err) {
             console.log(err);
-          } else{
-            Product.find({}, (err, allProducts) => {
-              if(err){
-                console.log(err);
-              } else{
-              res.render('index', {title: 'Wishlists', wishlists: allWishlists, products:allProducts})
-              }
+          } else {
+            res.render('index', {
+              title: 'Wishlists',
+              wishlists: allWishlists,
+              products: allProducts
             });
           }
         });
-        
-     } catch (err){
+      }
+    });
+  } catch (err) {
     console.log(err);
   }
-})
+});
 
 router.get('/auth', (req, res, next) => {
-    bigCommerce.authorize(req.query)
-      .then(data => res.render('integrations/auth', { title: 'Authorized!', data: data })
-      .catch(next));
+  bigCommerce
+    .authorize(req.query)
+    .then(data =>
+      res
+        .render('integrations/auth', { title: 'Authorized!', data: data })
+        .catch(next)
+    );
 });
 
 router.get('/load', (req, res, next) => {
-    try {
-      const data = bigCommerce.verify(req.query['signed_payload']);
-      res.render('integrations/welcome', { title: 'Welcome!', data: data })
-    } catch (err) {
-      next(err);
-    }
-  });
+  try {
+    const data = bigCommerce.verify(req.query['signed_payload']);
+    res.render('integrations/welcome', { title: 'Welcome!', data: data });
+  } catch (err) {
+    next(err);
+  }
+});
 
-function getWishlists(){
-  bigCommerce.get('/wishlists')
-  .then(data => {
+const getWishlists = new Promise(async function(resolve, reject) {
+  await bigCommerce.get('/wishlists').then(data => {
     Arr = data.data;
-    for(id in Arr){
-      if (Object.prototype.hasOwnProperty.call(Arr, id)){
-          bigCommerce.get('/wishlists/'+ Arr[id].id).then(data => {
-          itemsArr = data.data;
-          console.log(itemsArr.id + "LINE 148");
-          Wishlist.collection.findOne({"id":itemsArr.id}, null, function(err, docs){
-            if (docs === null){
-              
-            Wishlist.collection.insertOne(data.data, function(err, res) {
+    let wArr = [];
+    for (let [key, value] of Object.entries(Arr)) {
+      if (value.id) {
+        wArr.push(value.id);
+      }
+    }
+    e();
+    async function e(resolve) {
+      for (i = 0; i < wArr.length; i++) {
+        await bigCommerce.get('/wishlists/' + wArr[i]).then(data => {
+          wishlistsArr = [];
+          wishlistsArr = data.data;
+          console.log(wishlistsArr.id + 'LINE 148');
+
+          Wishlist.collection.findOne({ id: wishlistsArr.id }, null, function(
+            err,
+            docs
+          ) {
+            if (docs === null) {
+              Wishlist.collection.insertOne(data.data, function(err, res) {
+                if (err) throw err;
+                console.log(
+                  'Number of documents inserted: ' + res.insertedCount
+                );
+              });
               if (err) throw err;
-              console.log('Number of documents inserted: ' + res.insertedCount);
-              
-            });
-          }
-        }); // WISHLIST FIND
-        console.log("LINE 114 ABOUT TO ITERATE");
-          for(product_id in itemsArr.items){
-            console.log("LINE 116" + itemsArr.items[product_id].product_id);
-            if(Object.prototype.hasOwnProperty.call(itemsArr.items,product_id)){
-              wishlistId = itemsArr.id;
-              console.log(itemsArr.id + "WISHLIST ID LINE 165");
-              console.log(wishlistId + "WISHLIST ID LINE 165")
-              productId = itemsArr.items[product_id].product_id;
-              bigCommerce.get('/catalog/products/' + productId)
-              .then(data => {
-                data = data.data;
-                prodArr = new Object();
-                prodArr = JSON.stringify(data);
-                console.log(JSON.stringify(data.id) + "LINE 180");
-                console.log(prodArr + "LINE 181");
-                Product.collection.findOne({"id":data.id}, null, function(err, docs){
-                if (docs === null){
-                  Product.collection.insertOne(data, function(err, res) {
-                    Product.collection.findOne({'id': productId, 'wishlists': [{'id':wishlistId}]}, function(err, docs){
-                      if (docs) {
-                        console.log(JSON.stringify(docs) + "LINE 138");
-                      }
-                      else{
-                        Wishlist.collection.findOne({'id': wishlistId, 'items.product_id': productId}, function(err, res){
-                        if(err) throw err;
-                        else{
-                        Product.collection.findOneAndUpdate({'id': productId}, {$push: {'wishlists': {'id':wishlistId}}}, function(err,docs){
+            } else {
+              reject(err);
+            }
+          });
+        });
+      }
+    }
+    return resolve();
+  });
+}).catch(err => {
+  console.log('getWishlists rejected' + err);
+});
+
+const getProducts = new Promise(async function(resolve, reject) {
+  bigCommerce.get('/catalog/products').then(data => {
+    Arr = data.data;
+    let pArr = [];
+    for ([key, value] of Object.entries(Arr)) {
+      if (value.id) {
+        pArr.push(value.id);
+      }
+    }
+    console.log(pArr);
+    e();
+    async function e(resolve) {
+      for (i = 0; i < pArr.length; i++) {
+        await bigCommerce.get('/catalog/products/' + pArr[i]).then(data => {
+          prodArr = [];
+          prodArr = data.data;
+          pId = prodArr.id;
+          console.log(pId);
+          Wishlist.collection.find({ 'items.product_id': pId }, null, function(
+            err,
+            docs
+          ) {
+            if (docs) {
+              wIdArr = [];
+              docs.forEach(element => {
+                for ([key, value] of Object.entries(element)) {
+                  if (key === 'id' && wIdArr.includes(value) != true) {
+                    wIdArr.push(value);
+                  }
+                }
+                Product.collection.findOne({ id: pId }, null, function(
+                  err,
+                  docs
+                ) {
+                  if (err) throw err;
+                  if (docs != null) {
+                    console.log(pId + 'LINE 169');
+                    console.log(wIdArr + 'LINE 170');
+                    wIdArr.forEach(element => {
+                      console.log(element);
+                      Product.collection.findOne(
+                        { id: pId, 'wishlists.id': element },
+                        null,
+                        function(err, docs) {
                           if (err) throw err;
-                          else console.log(docs);
-                        });
-                        console.log(res);
+                          if (docs == null) {
+                            Product.collection.findOneAndUpdate(
+                              { id: pId },
+                              { $set: { wishlists: { id: wIdArr } } },
+                              function(err, docs) {
+                                if (err) throw err;
+                                else {
+                                  console.log(docs);
+                                }
+                              }
+                            );
+                          }
+                          if (docs != null) {
+                            console.log('wishlist already saved to product');
+                          }
                         }
-                        });
+                      );
+                    });
+                  }
+                  if (docs == null) {
+                    Product.collection.insertOne(prodArr, null, function(
+                      err,
+                      docs
+                    ) {
+                      if (err) throw err;
+                      if (docs) {
+                        console.log(docs);
                       }
                     });
-                    if (err) throw err;
-                    console.log('Number of documents inserted: ' + res.insertedCount);
-                  });              
-                }
-                else {
-                      Product.collection.findOne({'id': productId, 'wishlists': [{'id':wishlistId}]}, function(err, docs){
-                        if (docs) {
-                          console.log(JSON.stringify(docs) + "LINE 161");
-                        }
-                        else{
-                          Wishlist.collection.findOne({'id': wishlistId, 'items.product_id': productId}, function(err, res){
-                            if(err) throw err;
-                            else{
-                            Product.collection.findOneAndUpdate({'id': productId}, {$push: {'wishlists': {'id':wishlistId}}}, function(err,docs){
-                              if (err) throw err;
-                              else console.log(docs);
-                            });
-                            console.log(res);
-                          }
-                          });
-                          
-                        }
-                      });
-              }
+                  }
+                });
               });
-              })
+              console.log(wIdArr);
+            } else {
+              return reject(err);
             }
-          }
-          console.log("DONE ITERATING");
-        })
+          });
+        });
       }
     }
   });
-}
+  return resolve();
+}).catch(err => {
+  console.log('getProducts rejected' + err);
+});
 
+kickOff().catch();
+async function kickOff() {
+  await getWishlists.then(getProducts);
+}
