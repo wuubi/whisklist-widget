@@ -1,14 +1,22 @@
-  <h2>Whisklist</h2></br>
-    <h3>Wishlists</h3>
-    {{#each wishlists}}
-        <pre>{{@index}}. {{this}}</pre>
-        <h4>{{name}}</h4>
-        
-    {{/each}}
-    <h3>Products</h3>
-    {{#each products}}
-        <pre>{{this}}</pre>
-        <h4>{{name}} - {{sku}}</h4>
-        <h5>Included in</h5>
-        <p>Wishlists: {{#each wishlists}}{{this}}{{/each}}</p>
-    {{/each}}
+<a href="/">
+  <h2>Whisklist</h2>
+</a></br>
+{{#if message}}
+<p class="text-center text-danger">{{message}}</p>
+{{/if}}
+<a href="/wishlists/update">Update Wishlists</a> -
+<a href="/products/update">Update Products</a>
+<h3>Wishlists</h3>
+
+{{#each wishlists}}
+<pre>{{@index}}. {{this}}</pre>
+<h4>{{name}}</h4>
+
+{{/each}}
+<h3>Products</h3>
+{{#each products}}
+<pre>{{this}}</pre>
+<h4>{{name}} - {{sku}}</h4>
+<h5>Included in</h5>
+<p>Wishlists: {{#each wishlists}}{{this}}{{/each}}</p>
+{{/each}}

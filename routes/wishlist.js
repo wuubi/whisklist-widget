@@ -1,6 +1,19 @@
+require('dotenv').config();
+
 const express = require('express');
 const router = express.Router();
+BigCommerce = require('node-bigcommerce');
 const Wishlist = require('../models/Wishlist.js');
+
+const bigCommerce = new BigCommerce({
+  logLevel: 'info',
+  clientId: process.env.CLIENT,
+  accessToken: process.env.TOKEN,
+  secret: process.env.SECRET,
+  storeHash: process.env.HASH,
+  responseType: 'json',
+  apiVersion: 'v3' // Default is v2
+});
 
 router.get('/wishlists', (req, res) => {
   Wishlist.find({}, (err, allWishlists) => {
@@ -14,6 +27,53 @@ router.get('/wishlists', (req, res) => {
       });
     }
   });
+});
+router.get('/wishlists/update', (req, res) => {
+  res.render('index', { message: 'Updating' });
+  const getWishlists = new Promise(async function(resolve, reject) {
+    await bigCommerce.get('/wishlists').then(data => {
+      Arr = data.data;
+      let wArr = [];
+      for (let [key, value] of Object.entries(Arr)) {
+        if (value.items.length > 0) {
+          wArr.push(value.id);
+        }
+      }
+
+      console.log(wArr + ' wArr ');
+      e();
+      async function e(resolve) {
+        for (i = 0; i < wArr.length; i++) {
+          await bigCommerce.get('/wishlists/' + wArr[i]).then(data => {
+            wishlistsArr = [];
+            wishlistsArr = data.data;
+            console.log(wishlistsArr.id + 'LINE 148');
+
+            Wishlist.collection.findOne({ id: wishlistsArr.id }, null, function(
+              err,
+              docs
+            ) {
+              if (docs === null) {
+                Wishlist.collection.insertOne(data.data, function(err, res) {
+                  if (err) throw err;
+                  console.log(
+                    'Number of documents inserted: ' + res.insertedCount
+                  );
+                });
+                if (err) throw err;
+              } else {
+                reject(err);
+              }
+            });
+          });
+        }
+      }
+      return resolve();
+    });
+  }).catch(err => {
+    console.log('getWishlists rejected' + err);
+  });
+  getWishlists;
 });
 router.post('/wishlists/add', (req, res) => {
   let message = '';
