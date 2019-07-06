@@ -103,10 +103,12 @@ const getWishlists = new Promise(async function(resolve, reject) {
     Arr = data.data;
     let wArr = [];
     for (let [key, value] of Object.entries(Arr)) {
-      if (value.id) {
+      if (value.items.length > 0) {
         wArr.push(value.id);
       }
     }
+
+    console.log(wArr + ' wArr ');
     e();
     async function e(resolve) {
       for (i = 0; i < wArr.length; i++) {
@@ -151,7 +153,7 @@ const getProducts = new Promise(async function(resolve, reject) {
     }
     console.log(pArr);
     e();
-    async function e(resolve) {
+    async function e() {
       for (i = 0; i < pArr.length; i++) {
         await bigCommerce.get('/catalog/products/' + pArr[i]).then(data => {
           prodArr = [];
@@ -188,17 +190,22 @@ const getProducts = new Promise(async function(resolve, reject) {
                           if (docs == null) {
                             Product.collection.findOneAndUpdate(
                               { id: pId },
-                              { $set: { wishlists: { id: wIdArr } } },
+                              { $push: { wishlists: { id: element } } },
                               function(err, docs) {
                                 if (err) throw err;
                                 else {
-                                  console.log(docs);
+                                  console.log(
+                                    'Number of inserted Products: ' +
+                                      docs.insertedCount
+                                  );
                                 }
                               }
                             );
                           }
                           if (docs != null) {
-                            console.log('wishlist already saved to product');
+                            console.log(
+                              element + ' wishlist already saved to product'
+                            );
                           }
                         }
                       );
@@ -211,7 +218,9 @@ const getProducts = new Promise(async function(resolve, reject) {
                     ) {
                       if (err) throw err;
                       if (docs) {
-                        console.log(docs);
+                        console.log(
+                          'Number of inserted Products: ' + docs.insertedCount
+                        );
                       }
                     });
                   }
